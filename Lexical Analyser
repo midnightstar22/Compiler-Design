@@ -1,3 +1,12 @@
+SHRADDHA SASIKUMAR
+ROLL NO:48
+S7 CSE
+28-07-25
+
+
+                                     	   LEXICAL ANALYSER
+
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -6,7 +15,7 @@
 #define MAX 2000
 
 char lexemes[MAX][50];
-char tokens[MAX][20];  // Increased size to accommodate longer token names
+char tokens[MAX][20]; 
 int lines[MAX];
 int entryCount = 0;
 int lastKeywordLine = 0;
@@ -19,7 +28,7 @@ void loadTable() {
     }
 
     char line[100];
-    fgets(line, sizeof(line), fp); // Skip header
+    fgets(line, sizeof(line), fp); 
 
     while (fgets(line, sizeof(line), fp)) {
         if (entryCount >= MAX) {
@@ -46,7 +55,7 @@ int findInTable(char *word, const char *type) {
 }
 
 void appendToTable(char *word, const char *type) {
-    if (findInTable(word, type) == -1) {  // Only if it's not already in the table
+    if (findInTable(word, type) == -1) { 
         if (entryCount >= MAX) {
             printf("Error: Symbol table full. Cannot add more entries.\n");
             return;
@@ -69,12 +78,19 @@ void appendToTable(char *word, const char *type) {
 }
 
 
+
 int main() {
-    FILE *fp = fopen("input.txt", "r");
+    char filename[100];
+
+    printf("Enter file name: ");
+    scanf("%99s", filename); 
+
+    FILE *fp = fopen(filename, "r");
     if (!fp) {
-        printf("Cannot open input.txt\n");
+        printf("Cannot open %s\n", filename);
         return 1;
     }
+    
 
     loadTable();
 
@@ -130,7 +146,7 @@ int main() {
                 int ln = findInTable(buffer, "number");
                 printf("%s\t\tnumber\t%d\n", buffer, ln);
             } else if (findInTable(buffer, "keyword") != -1) {
-                printf("%s\t\tkeyword\t%d\n", buffer, findInTable(buffer, "keyword"));
+                printf("%s\t\tkeyword\t\n", buffer);
             } else {
                 appendToTable(buffer, "identifier");
                 int tableLine = findInTable(buffer, "identifier");
@@ -162,7 +178,7 @@ int main() {
                 printf(">\t\tRelop GT\n");
             }
         } else if (ch == ';') {
-            // Do nothing or handle semicolon if needed
+
         }
     }
 
@@ -173,26 +189,90 @@ int main() {
 
 
 
-input.txt
+INPUT.TXT
+
 int main() {
-    int a = 10;
-    float b = 20;
-    a = a + b;
-    if (a > b) {
-        a = a - 5;
+    int x= 10;
+    float y = 20;
+    x=x+y;
+    if (x> y) {
+        x = y - 10;
     }
 }
 
+SYMBOL TABLE
 
-sample_table.txt
+Lexeme       Token       Line
 
-lexeme     token      line
-int        keyword    1
-float      keyword    2
-char       keyword    3
-if         keyword    4
-else       keyword    5
-while      keyword    6
-return     keyword    7
-for        keyword    8
+int          keyword     1
+float        keyword     2
+char         keyword     3
+if           keyword     4
+else         keyword     5
+while        keyword     6
+for          keyword     7
+return       keyword     8
+void         keyword     9
+break        keyword     10
+continue     keyword     11
+double       keyword     12
+do           keyword     13
+switch       keyword     14
+case         keyword     15
+default      keyword     16
+sizeof       keyword     17
+static       keyword     18
+struct       keyword     19
+typedef      keyword     20
+union        keyword     21
+enum         keyword     22
+const        keyword     23
+volatile     keyword     24
+extern       keyword     25
+register     keyword     26
+goto         keyword     27
+signed       keyword     28
+unsigned     keyword     29
+long         keyword     30
+include      keyword     33
+define       keyword     34
+
+x          identifier  1
+10           number      2
+y           identifier  3
+20           number      4
+5            number      5
+
+
+OUTPUT
+
+Enter file name: input.txt
+Lexeme		Token
+int		keyword	
+int		keyword	
+x		identifier	1
+=		Assign OP
+10		number	2
+float		keyword	
+y		identifier	3
+=		Assign OP
+20		number	4
+x		identifier	1
+=		Assign OP
+x		identifier	1
++		Arithmetic Operator is PLUS
+y		identifier	3
+if		keyword	
+x		identifier	1
+>		Relop GT
+y		identifier	3
+x		identifier	1
+=		Assign OP
+y		identifier	1
+-		Arithmetic Operator is PLUS
+10		number	5
+
+
+
+
 
