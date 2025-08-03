@@ -1,0 +1,160 @@
+#include <stdio.h>
+#include <ctype.h>
+#include <string.h>
+
+// Global variables
+int n = 0, m = 0;
+int count;
+char production[10][10];
+char f[10], first[10];
+
+// Function prototypes
+void find_first(char c);
+void find_follow(char c);
+void add_to_set(char c);
+
+int main() {
+    int i;
+    char c, ch;
+    
+    // Get productions from user
+    printf("Enter the number of productions: ");
+    scanf("%d", &count);
+    printf("Enter the productions (e.g., E->E+T):\n");
+    for (i = 0; i < count; i++) {
+        scanf("%s", production[i]);
+    }
+
+    // --- Calculate and Print FIRST sets ---
+    char done_first[count];
+    int ptr_first = -1;
+
+    for (int k = 0; k < count; k++) {
+        c = production[k][0];
+        int exists = 0;
+        for (i = 0; i <= ptr_first; i++) {
+            if (c == done_first[i]) {
+                exists = 1;
+                break;
+            }
+        }
+        if (exists) continue;
+
+        // Reset first set before each new calculation
+        n = 0;
+        find_first(c);
+        ptr_first++;
+        done_first[ptr_first] = c;
+
+        printf("\nFirst(%c) = { ", c);
+        for (i = 0; i < n; i++) {
+            printf("%c%s", first[i], (i == n - 1) ? " " : ", ");
+        }
+        printf("}\n");
+    }
+    
+    // --- Calculate and Print FOLLOW sets ---
+    printf("\n");
+    char done_follow[count];
+    int ptr_follow = -1;
+    
+    for (int k = 0; k < count; k++) {
+        c = production[k][0];
+        int exists = 0;
+        for (i = 0; i <= ptr_follow; i++) {
+            if (c == done_follow[i]) {
+                exists = 1;
+                break;
+            }
+        }
+        if (exists) continue;
+
+        m = 0;
+        find_follow(c);
+        ptr_follow++;
+        done_follow[ptr_follow] = c;
+        
+        printf("Follow(%c) = { ", c);
+        for (i = 0; i < m; i++) {
+            printf("%c%s", f[i], (i == m - 1) ? " " : ", ");
+        }
+        printf("}\n");
+    }
+
+    return 0;
+}
+
+// Helper function to add to FOLLOW set without duplicates
+void add_to_set(char c) {
+    int i;
+    for (i = 0; i < m; i++) {
+        if (f[i] == c)
+            return;
+    }
+    f[m++] = c;
+}
+
+// CORRECTED find_first function
+void find_first(char c) {
+    int j;
+    // If c is a terminal, add it to the set and return.
+    if (!(isupper(c))) {
+        first[n++] = c;
+        return; // <--- FIX #1: Return after processing a terminal.
+    }
+
+    // If c is a non-terminal, find its productions.
+    for (j = 0; j < count; j++) {
+        if (production[j][0] == c) {
+            // Skip direct left recursion
+            if (production[j][0] == production[j][3]) {
+                continue;
+            }
+            if (production[j][3] == '#') {
+                first[n++] = '#';
+            } else if (!isupper(production[j][3])) {
+                first[n++] = production[j][3];
+            } else {
+                // Recursively find first of the non-terminal on RHS
+                find_first(production[j][3]);
+            }
+        }
+    }
+}
+
+
+void find_follow(char c) {
+    int i, j;
+    if (production[0][0] == c) {
+        add_to_set('$');
+    }
+    for (i = 0; i < count; i++) {
+        for (j = 3; j < strlen(production[i]); j++) {
+            if (production[i][j] == c) {
+                // Case 1: If there is a symbol after c
+                if (production[i][j + 1] != '\0') {
+                    // FIX #2: Reset FIRST set before using it inside FOLLOW
+                    n = 0; 
+                    find_first(production[i][j + 1]);
+                    
+                    int has_epsilon = 0;
+                    for (int k = 0; k < n; k++) {
+                         if(first[k] != '#') {
+                            add_to_set(first[k]);
+                         } else {
+                            has_epsilon = 1;
+                         }
+                    }
+                    
+                    if (has_epsilon && production[i][0] != c) {
+                        find_follow(production[i][0]);
+                    }
+                }
+                // Case 2: If c is the last symbol in the production
+                if (production[i][j + 1] == '\0' && c != production[i][0]) {
+                    find_follow(production[i][0]);
+                }
+            }
+        }
+    }
+}
