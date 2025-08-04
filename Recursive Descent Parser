@@ -3,7 +3,8 @@
 #include <ctype.h>
 
 char input[100];
-int i, err;
+int i;
+char err_msg[100];
 
 void E();
 void Eprime();
@@ -46,27 +47,32 @@ void F() {
         if (input[i] == ')') {
             i++;
         } else {
-            err = 1;
+            snprintf(err_msg, sizeof(err_msg), "Error: missing ')'");
         }
     } else {
-        err = 1;
+        snprintf(err_msg, sizeof(err_msg), "Error: unexpected character '%c'", input[i]);
     }
 }
 
 int main() {
     i = 0;
-    err = 0;
+    err_msg[0] = '\0'; 
     printf("Enter an expression: ");
     fgets(input, sizeof(input), stdin);
     
-    // Remove newline character if present
+
     input[strcspn(input, "\n")] = '\0';
     
     E();
-    if (strlen(input) == i && err == 0) {
+    
+    if (strlen(input) == i && err_msg[0] == '\0') {
         printf("%s is accepted\n", input);
     } else {
+        if (err_msg[0] == '\0') {
+            snprintf(err_msg, sizeof(err_msg), "Error: unexpected character at position %d", i);
+        }
         printf("%s is not accepted\n", input);
+        printf("%s\n", err_msg);
     }
     
     return 0;
