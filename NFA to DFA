@@ -1,0 +1,206 @@
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+
+#define MAX_STATES 26
+#define MAX_SYMBOLS 10
+#define MAX_DFA_STATES 256
+
+int n;
+int symbol_count;
+char symbols[MAX_SYMBOLS]; 
+int transitions[MAX_STATES][MAX_SYMBOLS + 1][MAX_STATES]; 
+
+int dfa_transitions[MAX_DFA_STATES][MAX_SYMBOLS];
+int dfa_states[MAX_DFA_STATES][MAX_STATES];
+int dfa_state_count = 0;
+
+int state_sets[MAX_DFA_STATES][MAX_STATES];
+int visited[MAX_DFA_STATES];
+
+void find_epsilon_closure(int state, int closure[]) {
+    if (closure[state]) return;
+    closure[state] = 1;
+    for (int i = 0; i < n; i++) {
+        if (transitions[state][0][i]) {
+            find_epsilon_closure(i, closure);
+        }
+    }
+}
+
+void epsilon_closure_set(int states[], int closure[]) {
+    for (int i = 0; i < n; i++) {
+        if (states[i]) {
+            find_epsilon_closure(i, closure);
+        }
+    }
+}
+
+int symbol_to_index(char c) {
+    for (int i = 0; i < symbol_count; i++) {
+        if (symbols[i] == c) return i;
+    }
+    return -1;
+}
+
+int are_same_sets(int a[], int b[]) {
+    for (int i = 0; i < n; i++) {
+        if (a[i] != b[i]) return 0;
+    }
+    return 1;
+}
+
+int get_dfa_state_index(int states[]) {
+    for (int i = 0; i < dfa_state_count; i++) {
+        if (are_same_sets(states, dfa_states[i])) return i;
+    }
+    memcpy(dfa_states[dfa_state_count], states, sizeof(int) * n);
+    return dfa_state_count++;
+}
+
+void convert_to_dfa() {
+    int start_closure[MAX_STATES] = {0};
+    find_epsilon_closure(0, start_closure);
+
+    int queue[MAX_DFA_STATES], front = 0, rear = 0;
+
+    int start_index = get_dfa_state_index(start_closure);
+    queue[rear++] = start_index;
+
+    while (front < rear) {
+        int curr = queue[front++];
+        visited[curr] = 1;
+
+        for (int s = 0; s < symbol_count; s++) {
+            int move_result[MAX_STATES] = {0};
+
+            for (int i = 0; i < n; i++) {
+                if (dfa_states[curr][i]) {
+                    for (int j = 0; j < n; j++) {
+                        if (transitions[i][s + 1][j]) {
+                            move_result[j] = 1;
+                        }
+                    }
+                }
+            }
+            
+            
+
+            int closure[MAX_STATES] = {0};
+            epsilon_closure_set(move_result, closure);
+
+            if (memcmp(closure, (int[MAX_STATES]){0}, sizeof(closure)) == 0) continue;
+
+            int next_index = get_dfa_state_index(closure);
+            dfa_transitions[curr][s] = next_index;
+
+            if (!visited[next_index]) {
+                queue[rear++] = next_index;
+            }
+        }
+    }
+}
+
+void print_dfa_transitions() {
+    printf("\nDFA Transition Table:\n");
+
+    // Print header row
+    printf("State\t");
+    for (int s = 0; s < symbol_count; s++) {
+        printf("%c\t", symbols[s]);
+    }
+    printf("\n");
+
+
+    for (int i = 0; i < dfa_state_count; i++) {
+        printf("%c\t", 'A' + i);
+
+        for (int s = 0; s < symbol_count; s++) {
+            int dest = dfa_transitions[i][s];
+            if (dest || memcmp(dfa_states[dest], (int[MAX_STATES]){0}, sizeof(int) * n)) {
+                printf("%c\t", 'A' + dest);
+            } else {
+                printf("-\t");  
+            }
+        }
+        printf("\n");
+    }
+}
+
+
+int main() {
+    printf("Enter the number of states: ");
+    scanf("%d", &n);
+    if (n > MAX_STATES) {
+        printf("Max states allowed is 26.\n");
+        return 1;
+    }
+
+    printf("Enter the number of input non-epsilon symbols: ");
+    scanf("%d", &symbol_count);
+    printf("Enter the input symbols: ");
+    scanf("%s", symbols);
+
+    memset(transitions, 0, sizeof(transitions));
+
+    int t;
+    printf("Enter the number of transitions: ");
+    scanf("%d", &t);
+
+    printf("Enter transitions in format: State + symbol -> State\n");
+    printf("Use uppercase letters for states and '#' for epsilon.\n");
+
+    for (int i = 0; i < t; i++) {
+        char from, symbol, arrow[3], to;
+        scanf(" %c + %c %2s %c", &from, &symbol, arrow, &to);
+
+        int from_index = from - 'A';
+        int to_index = to - 'A';
+        int sym_index = (symbol == '#') ? 0 : symbol_to_index(symbol) + 1;
+
+        if (sym_index == 0 && symbol != '#') {
+            printf("Invalid symbol %c. Try again.\n", symbol);
+            i--;
+            continue;
+        }
+
+        transitions[from_index][sym_index][to_index] = 1;
+    }
+
+    convert_to_dfa();
+    print_dfa_transitions();
+
+    return 0;
+}
+
+/*
+
+Enter the number of states: 11    
+Enter the number of input non-epsilon symbols: 2
+Enter the input symbols: ab
+Enter the number of transitions: 13
+Enter transitions in format: State + symbol -> State
+Use uppercase letters for states and '#' for epsilon.
+A+#->B
+A+#->H
+B+#->C
+B+#->E
+C+a->D
+D+#->G
+E+b->F
+F+#->G
+G+#->A
+G+#->H
+H+a->I
+I+b->J
+J+b->K
+
+DFA Transition Table:
+State	a	b	
+A	B	C	
+B	B	D	
+C	B	C	
+D	B	E	
+E	B	C
+
+*/
