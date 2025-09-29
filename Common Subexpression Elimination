@@ -1,0 +1,102 @@
+#include <stdio.h>
+#include <string.h>
+
+#define MAX_QUADS 100
+
+struct Quadruple {
+    char op[5];
+    char o1[20];
+    char o2[20];
+    char res[20];
+};
+
+
+int findCommonSubexpression(struct Quadruple quads[], int n, struct Quadruple current) {
+    for (int i = 0; i < n; i++) {
+        if (strcmp(quads[i].op, current.op) == 0 &&
+            strcmp(quads[i].o1, current.o1) == 0 &&
+            strcmp(quads[i].o2, current.o2) == 0) {
+            return i; 
+        }
+    }
+    return -1;
+}
+
+
+void replaceOccurrences(struct Quadruple quads[], int n, const char *oldRes, const char *newRes) {
+    for (int i = 0; i < n; i++) {
+        if (strcmp(quads[i].o1, oldRes) == 0) {
+            strcpy(quads[i].o1, newRes);
+        }
+        if (strcmp(quads[i].o2, oldRes) == 0) {
+            strcpy(quads[i].o2, newRes);
+        }
+    }
+}
+
+void eliminateCommonSubexpressions(struct Quadruple quads[], int *n) {
+    for (int i = 1; i < *n; i++) {
+        int index = findCommonSubexpression(quads, i, quads[i]);
+        if (index != -1 && index < i) {
+
+            replaceOccurrences(quads, *n, quads[i].res, quads[index].res);
+            
+
+            for (int j = i; j < *n - 1; j++) {
+                quads[j] = quads[j + 1];
+            }
+            (*n)--;
+            i--; 
+        }
+    }
+}
+
+int main() {
+    FILE *file;
+    char filename[100];
+    struct Quadruple quads[MAX_QUADS];
+    int n = 0;
+
+    printf("Enter filename with quadruples: ");
+    scanf("%s", filename);
+
+    file = fopen(filename, "r");
+    if (!file) {
+        printf("Could not open file %s\n", filename);
+        return 1;
+    }
+
+
+    char line[100];
+    fgets(line, sizeof(line), file);
+
+    while (fgets(line, sizeof(line), file)) {
+        if (sscanf(line, " %s %s %s %s", quads[n].op, quads[n].o1, quads[n].o2, quads[n].res) == 4) {
+            n++;
+            if (n >= MAX_QUADS) {
+                printf("Reached max quadruples\n");
+                break;
+            }
+        }
+    }
+
+    fclose(file);
+
+    if (n == 0) {
+        printf("No quadruples found\n");
+        return 1;
+    }
+
+    eliminateCommonSubexpressions(quads, &n);
+
+    printf("\nOptimized quadruples:\n");
+    printf("OP\tO1\tO2\tRES\n");
+    for (int i = 0; i < n; i++) {
+        printf("%s\t%s\t%s\t%s\n", quads[i].op, quads[i].o1, quads[i].o2, quads[i].res);
+    }
+
+    return 0;
+}
+
+
+
