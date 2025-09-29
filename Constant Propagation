@@ -1,0 +1,198 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+#include <stdbool.h>
+
+typedef struct {
+    char name[30];
+    char value[100];  
+    bool known;       
+} Symbol;
+
+Symbol symbols[100];
+int symCount = 0;
+
+void addOrUpdateSymbol(const char* name, const char* value, bool known) {
+    for (int i = 0; i < symCount; i++) {
+        if (strcmp(symbols[i].name, name) == 0) {
+            strcpy(symbols[i].value, value);
+            symbols[i].known = known;
+            return;
+        }
+    }
+    strcpy(symbols[symCount].name, name);
+    strcpy(symbols[symCount].value, value);
+    symbols[symCount].known = known;
+    symCount++;
+}
+
+Symbol* getSymbol(const char* name) {
+    for (int i = 0; i < symCount; i++) {
+        if (strcmp(symbols[i].name, name) == 0)
+            return &symbols[i];
+    }
+    return NULL;
+}
+
+bool isNumber(const char* s) {
+    char* endptr;
+    strtod(s, &endptr);
+    return (*endptr == '\0');
+}
+
+void trim(char* str) {
+    int len = strlen(str);
+    while (len > 0 && isspace(str[len - 1])) {
+        str[len - 1] = 0;
+        len--;
+    }
+    int start = 0;
+    while (str[start] && isspace(str[start]))
+        start++;
+    if (start > 0)
+        memmove(str, str + start, strlen(str + start) + 1);
+}
+
+bool isOperator(char c) {
+    return c == '+' || c == '-' || c == '*' || c == '/';
+}
+
+
+int tokenize(const char* expr, char tokens[][30]) {
+    int count = 0;
+    int i = 0, j = 0;
+    while (expr[i]) {
+        if (isspace(expr[i])) {
+            i++;
+            continue;
+        }
+        if (isOperator(expr[i])) {
+            tokens[count][0] = expr[i];
+            tokens[count][1] = 0;
+            count++;
+            i++;
+        } else {
+            j = 0;
+            while (expr[i] && !isspace(expr[i]) && !isOperator(expr[i])) {
+                tokens[count][j++] = expr[i++];
+            }
+            tokens[count][j] = 0;
+            count++;
+        }
+    }
+    return count;
+}
+
+void buildExpression(char tokens[][30], int count, char* outExpr) {
+    outExpr[0] = 0;
+    for (int i = 0; i < count; i++) {
+        strcat(outExpr, tokens[i]);
+        if (i < count - 1) strcat(outExpr, " ");
+    }
+}
+
+void evaluateExpression(char* expr, char* outExpr) {
+    char tokens[50][30];
+    int tokenCount = tokenize(expr, tokens);
+
+    bool hasUnknown = false;
+
+    for (int i = 0; i < tokenCount; i++) {
+
+        if (!isOperator(tokens[i][0]) && !isNumber(tokens[i])) {
+            Symbol* sym = getSymbol(tokens[i]);
+            if (sym && sym->known && isNumber(sym->value)) {
+                strcpy(tokens[i], sym->value);
+            } else {
+                hasUnknown = true;
+            }
+        }
+    }
+
+    if (hasUnknown) {
+      
+        buildExpression(tokens, tokenCount, outExpr);
+        return;
+    }
+
+    
+    double result = atof(tokens[0]);
+    for (int i = 1; i < tokenCount; i += 2) {
+        char op = tokens[i][0];
+        double val = atof(tokens[i + 1]);
+        if (op == '+') result += val;
+        else if (op == '-') result -= val;
+        else if (op == '*') result *= val;
+        else if (op == '/') result /= val;
+    }
+
+
+    if (result == (int)result) {
+        sprintf(outExpr, "%d", (int)result);
+    } else {
+        sprintf(outExpr, "%f", result);
+    }
+}
+
+int main() {
+    FILE* fp = fopen("inp.txt", "r");
+    if (!fp) {
+        printf("Could not open inp.txt\n");
+        return 1;
+    }
+    FILE* out = fopen("result.txt", "w");
+    if (!out) {
+        printf("Could not open result.txt\n");
+        fclose(fp);
+        return 1;
+    }
+
+    char line[256];
+    while (fgets(line, sizeof(line), fp)) {
+        char originalLine[256];
+        strcpy(originalLine, line);
+
+
+        if (line[strlen(line) - 1] == '\n')
+            line[strlen(line) - 1] = 0;
+
+        char* eq = strchr(line, '=');
+        if (eq) {
+
+            char lhs[50], rhs[200];
+            int pos = eq - line;
+            strncpy(lhs, line, pos);
+            lhs[pos] = '\0';
+            strcpy(rhs, eq + 1);
+
+            trim(lhs);
+            trim(rhs);
+
+
+            bool hasSemicolon = false;
+            int lenrhs = strlen(rhs);
+            if (lenrhs > 0 && rhs[lenrhs - 1] == ';') {
+                rhs[lenrhs - 1] = 0;
+                trim(rhs);
+                hasSemicolon = true;
+            }
+
+            char evaluated[200];
+            evaluateExpression(rhs, evaluated);
+
+            addOrUpdateSymbol(lhs, evaluated, isNumber(evaluated));
+
+            fprintf(out, "%s=%s%s\n", lhs, evaluated, hasSemicolon ? ";" : "");
+        } else {
+
+            fputs(originalLine, out);
+        }
+    }
+
+    fclose(fp);
+    fclose(out);
+
+    printf("Processing complete. Check result.txt\n");
+    return 0;
+}
