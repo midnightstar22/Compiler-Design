@@ -3,8 +3,7 @@
 #include<stdlib.h>
 void main()
 {
-    char code[10][30], str[20], opr[10];
-    int arr[] = {0,0,0,0};
+    char  str[20], opr[10];
     int i = 0,k=0;
     FILE *fp1,*fp2;
     fp1=fopen("inp_8086.txt","r");
