@@ -99,4 +99,125 @@ int main() {
 }
 
 
+----------
+CORRCTERD
+----------
+
+#include <stdio.h>
+#include <string.h>
+
+#define MAX_QUADS 100
+
+struct Quadruple {
+    char op[5];
+    char o1[20];
+    char o2[20];
+    char res[20];
+};
+
+// Function to find a matching common subexpression before index i
+int findCommonSubexpression(struct Quadruple quads[], int n, struct Quadruple current) {
+    for (int i = 0; i < n; i++) {
+        if (strcmp(quads[i].op, current.op) == 0 &&
+            strcmp(quads[i].o1, current.o1) == 0 &&
+            strcmp(quads[i].o2, current.o2) == 0) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+// Check if an operand was modified between two expressions
+int isOperandModified(struct Quadruple quads[], int start, int end, const char *operand) {
+    for (int i = start + 1; i < end; i++) {
+        // If this instruction redefines the operand
+        if (strcmp(quads[i].res, operand) == 0)
+            return 1;
+    }
+    return 0;
+}
+
+// Replace occurrences of oldRes with newRes in operands
+void replaceOccurrences(struct Quadruple quads[], int n, const char *oldRes, const char *newRes) {
+    for (int i = 0; i < n; i++) {
+        if (strcmp(quads[i].o1, oldRes) == 0) {
+            strcpy(quads[i].o1, newRes);
+        }
+        if (strcmp(quads[i].o2, oldRes) == 0) {
+            strcpy(quads[i].o2, newRes);
+        }
+    }
+}
+
+// Eliminate safe common subexpressions
+void eliminateCommonSubexpressions(struct Quadruple quads[], int *n) {
+    for (int i = 1; i < *n; i++) {
+        int index = findCommonSubexpression(quads, i, quads[i]);
+        if (index != -1 && index < i) {
+
+            // Check if operands are modified in between
+            if (isOperandModified(quads, index, i, quads[i].o1) ||
+                isOperandModified(quads, index, i, quads[i].o2)) {
+                continue; // Skip elimination – operands changed
+            }
+
+            // Replace all occurrences of the current result
+            replaceOccurrences(quads, *n, quads[i].res, quads[index].res);
+
+            // Remove the redundant quadruple
+            for (int j = i; j < *n - 1; j++) {
+                quads[j] = quads[j + 1];
+            }
+            (*n)--;
+            i--; // Stay at same index after deletion
+        }
+    }
+}
+
+int main() {
+    FILE *file;
+    char filename[100];
+    struct Quadruple quads[MAX_QUADS];
+    int n = 0;
+
+    printf("Enter filename with quadruples: ");
+    scanf("%s", filename);
+
+    file = fopen(filename, "r");
+    if (!file) {
+        printf("Could not open file %s\n", filename);
+        return 1;
+    }
+
+    char line[100];
+    fgets(line, sizeof(line), file); // Skip header if present
+
+    while (fgets(line, sizeof(line), file)) {
+        if (sscanf(line, " %s %s %s %s", quads[n].op, quads[n].o1, quads[n].o2, quads[n].res) == 4) {
+            n++;
+            if (n >= MAX_QUADS) {
+                printf("Reached max quadruples\n");
+                break;
+            }
+        }
+    }
+    fclose(file);
+
+    if (n == 0) {
+        printf("No quadruples found\n");
+        return 1;
+    }
+
+    eliminateCommonSubexpressions(quads, &n);
+
+    printf("\nOptimized quadruples:\n");
+    printf("OP\tO1\tO2\tRES\n");
+    for (int i = 0; i < n; i++) {
+        printf("%s\t%s\t%s\t%s\n", quads[i].op, quads[i].o1, quads[i].o2, quads[i].res);
+    }
+
+    return 0;
+}
+
+
 
