@@ -1,0 +1,15 @@
+%{
+#include <stdio.h>
+%}
+
+%%
+abc     { printf("ABC"); }   // Replace lowercase "abc" with uppercase "ABC"
+.       { ECHO; }            // Print all other characters as they are
+\n      { ECHO; }            // Preserve newlines
+%%
+
+int main() {
+    printf("Enter a string: ");
+    yylex();   // Start lexical analysis
+    return 0;
+}
