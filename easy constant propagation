@@ -1,0 +1,111 @@
+#include <stdio.h>
+#include <string.h>
+
+struct Var {
+    char name;
+    int value;
+    int isConstant;
+} symtab[10];
+
+int varCount = 0;
+
+int getConstantValue(char name, int *isConst) {
+    for (int i = 0; i < varCount; i++) {
+        if (symtab[i].name == name) {
+            *isConst = symtab[i].isConstant;
+            return symtab[i].value;
+        }
+    }
+    *isConst = 0;
+    return 0;
+}
+
+void updateVariable(char name, int val, int isConst) {
+    for (int i = 0; i < varCount; i++) {
+        if (symtab[i].name == name) {
+            symtab[i].value = val;
+            symtab[i].isConstant = isConst;
+            return;
+        }
+    }
+    symtab[varCount].name = name;
+    symtab[varCount].value = val;
+    symtab[varCount].isConstant = isConst;
+    varCount++;
+}
+
+int calculateResult(char op, int leftOperand, int rightOperand) {
+    switch (op) {
+        case '+': return leftOperand + rightOperand;
+        case '-': return leftOperand - rightOperand;
+        case '*': return leftOperand * rightOperand;
+        case '/': return (rightOperand != 0) ? leftOperand / rightOperand : 0;
+        default: return 0;
+    }
+}
+
+int main() {
+    char input[100];
+    char target, left, right, op;
+    int val;
+
+    FILE *fp = fopen("input.txt", "r");  // Open input file
+    if (fp == NULL) {
+        printf("Error: Could not open input.txt\n");
+        return 1;
+    }
+
+    printf("Reading assignments from input.txt...\n");
+
+    while (fgets(input, sizeof(input), fp)) {
+        if (strncmp(input, "end", 3) == 0)
+            break;
+
+        int p = sscanf(input, " %c = %d", &target, &val);
+        if (p == 2) {
+            // Case: a = 5
+            updateVariable(target, val, 1);
+            continue;
+        }
+
+        p = sscanf(input, " %c = %c %c %d", &target, &left, &op, &val);
+        if (p == 4) {
+            // Case: b = a + 3
+            int isLeftConst;
+            int leftVal = getConstantValue(left, &isLeftConst);
+            if (isLeftConst) {
+                int res = calculateResult(op, leftVal, val);
+                updateVariable(target, res, 1);
+            } else {
+                updateVariable(target, 0, 0);
+            }
+            continue;
+        }
+
+        p = sscanf(input, " %c = %c %c %c", &target, &left, &op, &right);
+        if (p == 4) {
+            // Case: c = a + b
+            int isLeftConst, isRightConst;
+            int leftVal = getConstantValue(left, &isLeftConst);
+            int rightVal = getConstantValue(right, &isRightConst);
+            if (isLeftConst && isRightConst) {
+                int res = calculateResult(op, leftVal, rightVal);
+                updateVariable(target, res, 1);
+            } else {
+                updateVariable(target, 0, 0);
+            }
+        }
+    }
+
+    fclose(fp); // Close the file
+
+    printf("\n--- Final Constant Values ---\n");
+    for (int i = 0; i < varCount; i++) {
+        if (symtab[i].isConstant)
+            printf("%c = %d\n", symtab[i].name, symtab[i].value);
+        else
+            printf("%c = (non-constant)\n", symtab[i].name);
+    }
+
+    return 0;
+}
