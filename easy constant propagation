@@ -1,111 +1,122 @@
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
 
 struct Var {
     char name;
-    int value;
+    float value;
     int isConstant;
-} symtab[10];
+} symtab[50];
 
 int varCount = 0;
 
-int getConstantValue(char name, int *isConst) {
+int getConstantValue(char name, float *val) {
     for (int i = 0; i < varCount; i++) {
         if (symtab[i].name == name) {
-            *isConst = symtab[i].isConstant;
-            return symtab[i].value;
+            if (symtab[i].isConstant) {
+                *val = symtab[i].value;
+                return 1;
+            }
+            return 0;
         }
     }
-    *isConst = 0;
     return 0;
 }
 
-void updateVariable(char name, int val, int isConst) {
+void updateVariable(char name, float value, int isConst) {
     for (int i = 0; i < varCount; i++) {
         if (symtab[i].name == name) {
-            symtab[i].value = val;
+            symtab[i].value = value;
             symtab[i].isConstant = isConst;
             return;
         }
     }
     symtab[varCount].name = name;
-    symtab[varCount].value = val;
+    symtab[varCount].value = value;
     symtab[varCount].isConstant = isConst;
     varCount++;
 }
 
-int calculateResult(char op, int leftOperand, int rightOperand) {
+float calculate(float left, char op, float right) {
     switch (op) {
-        case '+': return leftOperand + rightOperand;
-        case '-': return leftOperand - rightOperand;
-        case '*': return leftOperand * rightOperand;
-        case '/': return (rightOperand != 0) ? leftOperand / rightOperand : 0;
-        default: return 0;
+        case '+': return left + right;
+        case '-': return left - right;
+        case '*': return left * right;
+        case '/': return right != 0 ? left / right : 0;
     }
+    return 0;
+}
+
+int isVariable(char c) {
+    return isalpha(c);
 }
 
 int main() {
-    char input[100];
-    char target, left, right, op;
-    int val;
+    FILE *fp = fopen("inp.txt", "r");
+    FILE *out = fopen("result.txt", "w");
 
-    FILE *fp = fopen("input.txt", "r");  // Open input file
-    if (fp == NULL) {
-        printf("Error: Could not open input.txt\n");
+    if (!fp || !out) {
+        printf("Error opening file.\n");
         return 1;
     }
 
-    printf("Reading assignments from input.txt...\n");
+    char line[256];
+    while (fgets(line, sizeof(line), fp)) {
+        char target, left, right, op;
+        float val;
 
-    while (fgets(input, sizeof(input), fp)) {
-        if (strncmp(input, "end", 3) == 0)
-            break;
-
-        int p = sscanf(input, " %c = %d", &target, &val);
-        if (p == 2) {
-            // Case: a = 5
+        // Pattern 1: a = 5;
+        if (sscanf(line, " %c = %f ;", &target, &val) == 2) {
             updateVariable(target, val, 1);
+            fprintf(out, "%c=%g;\n", target, val);
             continue;
         }
 
-        p = sscanf(input, " %c = %c %c %d", &target, &left, &op, &val);
-        if (p == 4) {
-            // Case: b = a + 3
-            int isLeftConst;
-            int leftVal = getConstantValue(left, &isLeftConst);
-            if (isLeftConst) {
-                int res = calculateResult(op, leftVal, val);
+        // Pattern 2: a = b + 3;
+        if (sscanf(line, " %c = %c %c %f ;", &target, &left, &op, &val) == 4) {
+            float lval;
+            int lconst = getConstantValue(left, &lval);
+            if (lconst) {
+                float res = calculate(lval, op, val);
                 updateVariable(target, res, 1);
+                fprintf(out, "%c=%g;\n", target, res);
             } else {
+                updateVariable(target, 0, 0);
+                fprintf(out, "%c=%c %c %g;\n", target, left, op, val);
+            }
+            continue;
+        }
+
+        // Pattern 3: a = b + c;
+        if (sscanf(line, " %c = %c %c %c ;", &target, &left, &op, &right) == 4) {
+            float lval, rval;
+            int lconst = getConstantValue(left, &lval);
+            int rconst = getConstantValue(right, &rval);
+
+            if (lconst && rconst) {
+                float res = calculate(lval, op, rval);
+                updateVariable(target, res, 1);
+                fprintf(out, "%c=%g;\n", target, res);
+            } else if (lconst) {
+                fprintf(out, "%c=%g %c %c;\n", target, lval, op, right);
+                updateVariable(target, 0, 0);
+            } else if (rconst) {
+                fprintf(out, "%c=%c %c %g;\n", target, left, op, rval);
+                updateVariable(target, 0, 0);
+            } else {
+                fprintf(out, "%s", line);
                 updateVariable(target, 0, 0);
             }
             continue;
         }
 
-        p = sscanf(input, " %c = %c %c %c", &target, &left, &op, &right);
-        if (p == 4) {
-            // Case: c = a + b
-            int isLeftConst, isRightConst;
-            int leftVal = getConstantValue(left, &isLeftConst);
-            int rightVal = getConstantValue(right, &isRightConst);
-            if (isLeftConst && isRightConst) {
-                int res = calculateResult(op, leftVal, rightVal);
-                updateVariable(target, res, 1);
-            } else {
-                updateVariable(target, 0, 0);
-            }
-        }
+        // Otherwise, copy the line as is
+        fprintf(out, "%s", line);
     }
 
-    fclose(fp); // Close the file
+    fclose(fp);
+    fclose(out);
 
-    printf("\n--- Final Constant Values ---\n");
-    for (int i = 0; i < varCount; i++) {
-        if (symtab[i].isConstant)
-            printf("%c = %d\n", symtab[i].name, symtab[i].value);
-        else
-            printf("%c = (non-constant)\n", symtab[i].name);
-    }
-
+    printf("✅ Output written to result.txt\n");
     return 0;
 }
